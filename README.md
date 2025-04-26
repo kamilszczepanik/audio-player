@@ -62,6 +62,10 @@ npm run start
 yarn start
 ```
 
+Link to project demo: https://audio-player-ruby.vercel.app/
+
+**Deployment is running after every commit pushed to the main branch.**
+
 ## Available Scripts
 
 - `npm run dev` - Start development server
