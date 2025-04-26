@@ -42,6 +42,7 @@ export default function Home() {
       sound.unload();
       URL.revokeObjectURL(url);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioFiles]);
 
   const handlePlayPause = () => {
