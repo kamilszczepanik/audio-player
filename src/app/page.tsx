@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Howl } from 'howler';
+import { Trash2 } from 'lucide-react';
 
 const AUDIO_FORMATS: Record<string, string> = {
   'audio/mpeg': 'mp3',
@@ -80,6 +81,21 @@ export default function Home() {
     howls.forEach((h) => h.volume(newVolume));
   };
 
+  const handleDeleteTrack = (index: number) => {
+    // Clean up the howl and blob URL for the deleted track
+    if (howls[index]) {
+      howls[index].unload();
+    }
+    if (blobUrls[index]) {
+      URL.revokeObjectURL(blobUrls[index]);
+    }
+
+    // Remove the track from all state arrays
+    setAudioFiles((prev) => prev.filter((_, i) => i !== index));
+    setHowls((prev) => prev.filter((_, i) => i !== index));
+    setBlobUrls((prev) => prev.filter((_, i) => i !== index));
+  };
+
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
@@ -104,8 +120,15 @@ export default function Home() {
               <h2 className="text-lg font-semibold mb-2">Uploaded Files:</h2>
               <ul className="space-y-2">
                 {audioFiles.map((file, index) => (
-                  <li key={index} className="text-sm text-gray-600">
-                    {file.name}
+                  <li key={index} className="text-sm text-gray-600 flex items-center justify-between">
+                    <span>{file.name}</span>
+                    <button
+                      onClick={() => handleDeleteTrack(index)}
+                      className="p-1 hover:bg-red-100 rounded-full transition-colors"
+                      aria-label="Delete track"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
                   </li>
                 ))}
               </ul>
