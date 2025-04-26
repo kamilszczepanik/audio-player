@@ -8,7 +8,7 @@ import { useMultitrack } from '@/hooks/useMultitrack';
 import { useFileUpload } from '@/hooks/useFileUpload';
 
 export default function AudioPlayer() {
-  const { tracks, containerRef, setTracks } = useMultitrack();
+  const { tracks, containerRef, volume, setVolume, zoom, setZoom, canPlay, setTracks, multitrackRef } = useMultitrack();
   const { handleFileUpload } = useFileUpload({ setTracks });
 
   return (
@@ -19,7 +19,15 @@ export default function AudioPlayer() {
         </div>
         <h1 className="text-2xl font-bold absolute left-1/2 transform -translate-x-1/2">iAudio</h1>
         <div className={`${tracks.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-          <AudioControls />
+          <AudioControls
+            multitrackRef={multitrackRef}
+            tracks={tracks}
+            canPlay={canPlay}
+            setVolume={setVolume}
+            setZoom={setZoom}
+            volume={volume}
+            zoom={zoom}
+          />
         </div>
       </header>
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start w-full max-w-4xl">

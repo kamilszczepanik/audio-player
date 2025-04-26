@@ -1,11 +1,11 @@
 import { SKIP_TIME_SECONDS } from '@/constants';
 import { AudioTrack } from '@/types';
 import { Pause, Play, Search, SkipBack, SkipForward, Volume2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { default as MultitrackInstance } from 'wavesurfer-multitrack';
 
 interface Props {
-  multitrackRef: MultitrackInstance | null;
+  multitrackRef: React.RefObject<MultitrackInstance | null>;
   canPlay: boolean;
   setVolume: (volume: number) => void;
   setZoom: (zoom: number) => void;
@@ -16,6 +16,51 @@ interface Props {
 
 export const AudioControls = ({ multitrackRef, tracks, canPlay, setVolume, setZoom, volume, zoom }: Props) => {
   const [isPlaying, setIsPlaying] = useState(false);
+
+  const handleVolumeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(event.target.value);
+    setVolume(newVolume);
+
+    if (multitrackRef.current) {
+      tracks.forEach((_, index) => {
+        multitrackRef.current?.setTrackVolume(index, newVolume);
+      });
+    }
+  };
+
+  const handleZoomChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newZoom = parseInt(event.target.value);
+    setZoom(newZoom);
+
+    if (multitrackRef.current) {
+      multitrackRef.current.zoom(newZoom);
+    }
+  };
+
+  const handlePlayPause = useCallback(() => {
+    if (!multitrackRef.current) return;
+
+    if (isPlaying) {
+      multitrackRef.current.pause();
+    } else {
+      multitrackRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  }, [isPlaying, multitrackRef]);
+
+  const handleSkipForward = useCallback(() => {
+    if (!multitrackRef.current) return;
+
+    const currentTime = multitrackRef.current.getCurrentTime();
+    multitrackRef.current.setTime(currentTime + SKIP_TIME_SECONDS);
+  }, [multitrackRef]);
+
+  const handleSkipBackward = useCallback(() => {
+    if (!multitrackRef.current) return;
+
+    const currentTime = multitrackRef.current.getCurrentTime();
+    multitrackRef.current.setTime(currentTime - SKIP_TIME_SECONDS);
+  }, [multitrackRef]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -38,51 +83,7 @@ export const AudioControls = ({ multitrackRef, tracks, canPlay, setVolume, setZo
     window.addEventListener('keydown', handleKeyDown);
 
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [canPlay, isPlaying]);
-  const handleVolumeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(event.target.value);
-    setVolume(newVolume);
-
-    if (multitrackRef.current) {
-      tracks.forEach((_, index) => {
-        multitrackRef.current?.setTrackVolume(index, newVolume);
-      });
-    }
-  };
-
-  const handleZoomChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newZoom = parseInt(event.target.value);
-    setZoom(newZoom);
-
-    if (multitrackRef.current) {
-      multitrackRef.current.zoom(newZoom);
-    }
-  };
-
-  const handlePlayPause = () => {
-    if (!multitrackRef.current) return;
-
-    if (isPlaying) {
-      multitrackRef.current.pause();
-    } else {
-      multitrackRef.current.play();
-    }
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleSkipForward = () => {
-    if (!multitrackRef.current) return;
-
-    const currentTime = multitrackRef.current.getCurrentTime();
-    multitrackRef.current.setTime(currentTime + SKIP_TIME_SECONDS);
-  };
-
-  const handleSkipBackward = () => {
-    if (!multitrackRef.current) return;
-
-    const currentTime = multitrackRef.current.getCurrentTime();
-    multitrackRef.current.setTime(currentTime - SKIP_TIME_SECONDS);
-  };
+  }, [canPlay, isPlaying, handlePlayPause, handleSkipBackward, handleSkipForward]);
 
   return (
     <div className="flex items-center gap-6 transition-opacity duration-300">
