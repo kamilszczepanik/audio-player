@@ -1,7 +1,12 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { Howl } from "howler";
+import { useState, useEffect } from 'react';
+import { Howl } from 'howler';
+
+const AUDIO_FORMATS: Record<string, string> = {
+  'audio/mpeg': 'mp3',
+  'audio/wav': 'wav',
+};
 
 export default function Home() {
   const [audioFiles, setAudioFiles] = useState<File[]>([]);
@@ -13,19 +18,15 @@ export default function Home() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      const newAudioFiles = Array.from(files).filter(
-        (file) => file.type === "audio/mpeg" || file.type === "audio/wav"
-      );
+      const newAudioFiles = Array.from(files).filter((file) => AUDIO_FORMATS[file.type]);
       setAudioFiles((prev) => [...prev, ...newAudioFiles]);
     }
   };
 
-  // Create Howl instances for all uploaded files
   useEffect(() => {
-    // Clean up previous Howl instances
     howls.forEach((h) => h.unload());
     blobUrls.forEach((url) => {
-      if (url.startsWith("blob:")) {
+      if (url.startsWith('blob:')) {
         URL.revokeObjectURL(url);
       }
     });
@@ -38,12 +39,10 @@ export default function Home() {
     const newHowls = audioFiles.map((file) => {
       const url = URL.createObjectURL(file);
       newBlobUrls.push(url);
-      let format: string[] = [];
-      if (file.type === "audio/mpeg") format = ["mp3"];
-      else if (file.type === "audio/wav") format = ["wav"];
+
       return new Howl({
         src: [url],
-        format,
+        format: [AUDIO_FORMATS[file.type]],
         volume,
         onend: function () {
           // Optionally handle end event
@@ -53,11 +52,10 @@ export default function Home() {
     setHowls(newHowls);
     setBlobUrls(newBlobUrls);
     setIsPlaying(false);
-    // Clean up blob URLs on unmount or file change
     return () => {
       newHowls.forEach((h) => h.unload());
       newBlobUrls.forEach((url) => {
-        if (url.startsWith("blob:")) {
+        if (url.startsWith('blob:')) {
           URL.revokeObjectURL(url);
         }
       });
@@ -89,7 +87,9 @@ export default function Home() {
         <div className="flex flex-col gap-4">
           <input
             type="file"
-            accept=".mp3,.wav"
+            accept={Object.keys(AUDIO_FORMATS)
+              .map((type) => `.${AUDIO_FORMATS[type]}`)
+              .join(',')}
             multiple
             onChange={handleFileUpload}
             className="block w-full text-sm text-gray-500
@@ -115,7 +115,7 @@ export default function Home() {
                   disabled={howls.length === 0}
                   className="px-3 py-1 bg-violet-500 text-white rounded disabled:bg-gray-300"
                 >
-                  {isPlaying ? "Pause" : "Play"}
+                  {isPlaying ? 'Pause' : 'Play'}
                 </button>
                 <label className="flex items-center gap-2">
                   Volume
@@ -134,9 +134,7 @@ export default function Home() {
           )}
         </div>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        footer
-      </footer>
+      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">footer</footer>
     </div>
   );
 }
