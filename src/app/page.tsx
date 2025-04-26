@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import WaveSurfer from 'wavesurfer.js';
-import { Trash2, Plus, Music, Play, Pause, Volume2 } from 'lucide-react';
+import { Trash2, Plus, Music, Play, Pause, Volume2, Search } from 'lucide-react';
 
 const AUDIO_FORMATS: Record<string, string> = {
   'audio/mpeg': 'mp3',
@@ -44,47 +44,42 @@ export default function Home() {
 
   useEffect(() => {
     tracks.forEach((track) => {
-      if (!track.container) {
-        const container = document.createElement('div');
-        container.id = `waveform-${track.id}`;
-        container.style.height = '100px';
-        container.style.width = '100px';
-        container.style.marginBottom = '20px';
-        timelineRef.current?.appendChild(container);
-
-        const wavesurfer = WaveSurfer.create({
-          container: container,
-          waveColor: '#4F46E5',
-          progressColor: '#7C3AED',
-          cursorColor: '#7C3AED',
-          barWidth: 2,
-          barRadius: 3,
-          cursorWidth: 1,
-          height: 100,
-        });
-
-        const url = URL.createObjectURL(track.file);
-        wavesurfer.load(url);
-
-        wavesurfer.on('ready', () => {
-          setDuration(Math.max(duration, wavesurfer.getDuration()));
-        });
-
-        wavesurfer.on('audioprocess', (time) => {
-          setCurrentTime(time);
-        });
-
-        wavesurfer.on('interaction', () => {
-          const currentTime = wavesurfer.getCurrentTime();
-          tracks.forEach((otherTrack) => {
-            if (otherTrack.id !== track.id && otherTrack.wavesurfer) {
-              otherTrack.wavesurfer.seekTo(currentTime / otherTrack.wavesurfer.getDuration());
-            }
+      if (!track.wavesurfer) {
+        const container = document.getElementById(`waveform-${track.id}`);
+        if (container) {
+          const wavesurfer = WaveSurfer.create({
+            container: container,
+            waveColor: '#4F46E5',
+            progressColor: '#7C3AED',
+            cursorColor: '#7C3AED',
+            barWidth: 2,
+            barRadius: 3,
+            cursorWidth: 1,
+            height: 100,
           });
-        });
 
-        track.wavesurfer = wavesurfer;
-        track.container = container;
+          const url = URL.createObjectURL(track.file);
+          wavesurfer.load(url);
+
+          wavesurfer.on('ready', () => {
+            setDuration(Math.max(duration, wavesurfer.getDuration()));
+          });
+
+          wavesurfer.on('audioprocess', (time) => {
+            setCurrentTime(time);
+          });
+
+          wavesurfer.on('interaction', () => {
+            const currentTime = wavesurfer.getCurrentTime();
+            tracks.forEach((otherTrack) => {
+              if (otherTrack.id !== track.id && otherTrack.wavesurfer) {
+                otherTrack.wavesurfer.seekTo(currentTime / otherTrack.wavesurfer.getDuration());
+              }
+            });
+          });
+
+          track.wavesurfer = wavesurfer;
+        }
       }
     });
 
@@ -92,9 +87,6 @@ export default function Home() {
       tracks.forEach((track) => {
         if (track.wavesurfer) {
           track.wavesurfer.destroy();
-        }
-        if (track.container) {
-          track.container.remove();
         }
       });
     };
@@ -158,18 +150,10 @@ export default function Home() {
         </div>
         <h1 className="text-2xl font-bold text-center">iAudio</h1>
         <div
-          className={`flex items-center gap-4 transition-opacity duration-300 ${tracks.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          className={`flex items-center gap-6 transition-opacity duration-300 ${tracks.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         >
-          <button
-            onClick={handlePlayPause}
-            disabled={tracks.length === 0}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="flex flex-col">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
               <Volume2 className="w-5 h-5 text-gray-600" />
               <input
                 type="range"
@@ -180,12 +164,20 @@ export default function Home() {
                 onChange={handleVolumeChange}
                 className="w-24"
               />
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Zoom:</span>
-                <input type="range" min="10" max="100" value={zoom} onChange={handleZoomChange} className="w-24" />
-              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Search className="w-5 h-5 text-gray-600" />
+              <input type="range" min="10" max="100" value={zoom} onChange={handleZoomChange} className="w-24" />
             </div>
           </div>
+          <button
+            onClick={handlePlayPause}
+            disabled={tracks.length === 0}
+            className="p-4 rounded-lg bg-violet-300 transition-colors hover:scale-110 hover:cursor-pointer"
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+          </button>
         </div>
       </header>
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start w-full max-w-4xl">
@@ -218,8 +210,7 @@ export default function Home() {
                 />
                 {tracks.map((track) => (
                   <div key={track.id} className="relative mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-600">{track.file.name}</span>
+                    <div className="flex justify-end mb-2">
                       <button
                         onClick={() => handleDeleteTrack(track.id)}
                         className="p-1 hover:bg-red-100 rounded-full transition-colors"
@@ -227,6 +218,10 @@ export default function Home() {
                       >
                         <Trash2 className="w-4 h-4 text-red-500" />
                       </button>
+                    </div>
+                    <div className="flex flex-col">
+                      <div id={`waveform-${track.id}`} />
+                      <span className="text-sm text-gray-600 mt-2">{track.file.name}</span>
                     </div>
                   </div>
                 ))}
