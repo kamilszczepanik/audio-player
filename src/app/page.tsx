@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Howl } from "howler";
 
 export default function Home() {
   const [audioFiles, setAudioFiles] = useState<File[]>([]);
-  const [howl, setHowl] = useState<Howl | null>(null);
+  const [howls, setHowls] = useState<Howl[]>([]);
+  const [blobUrls, setBlobUrls] = useState<string[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
-  const howlRef = useRef<Howl | null>(null);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -20,38 +20,58 @@ export default function Home() {
     }
   };
 
+  // Create Howl instances for all uploaded files
   useEffect(() => {
-    if (audioFiles.length === 0) return;
-    const file = audioFiles[0];
-    const url = URL.createObjectURL(file);
-    if (howlRef.current) {
-      howlRef.current.unload();
-    }
-    const sound = new Howl({
-      src: [url],
-      volume,
-      format: ["mp3", "wav"],
-      onend: function () {
-        setIsPlaying(false);
-      },
+    // Clean up previous Howl instances
+    howls.forEach((h) => h.unload());
+    blobUrls.forEach((url) => {
+      if (url.startsWith("blob:")) {
+        URL.revokeObjectURL(url);
+      }
     });
-    howlRef.current = sound;
-    setHowl(sound);
+    if (audioFiles.length === 0) {
+      setHowls([]);
+      setBlobUrls([]);
+      return;
+    }
+    const newBlobUrls: string[] = [];
+    const newHowls = audioFiles.map((file) => {
+      const url = URL.createObjectURL(file);
+      newBlobUrls.push(url);
+      let format: string[] = [];
+      if (file.type === "audio/mpeg") format = ["mp3"];
+      else if (file.type === "audio/wav") format = ["wav"];
+      return new Howl({
+        src: [url],
+        format,
+        volume,
+        onend: function () {
+          // Optionally handle end event
+        },
+      });
+    });
+    setHowls(newHowls);
+    setBlobUrls(newBlobUrls);
     setIsPlaying(false);
+    // Clean up blob URLs on unmount or file change
     return () => {
-      sound.unload();
-      URL.revokeObjectURL(url);
+      newHowls.forEach((h) => h.unload());
+      newBlobUrls.forEach((url) => {
+        if (url.startsWith("blob:")) {
+          URL.revokeObjectURL(url);
+        }
+      });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioFiles]);
 
   const handlePlayPause = () => {
-    if (!howl) return;
+    if (howls.length === 0) return;
     if (isPlaying) {
-      howl.pause();
+      howls.forEach((h) => h.pause());
       setIsPlaying(false);
     } else {
-      howl.play();
+      howls.forEach((h) => h.play());
       setIsPlaying(true);
     }
   };
@@ -59,9 +79,7 @@ export default function Home() {
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
-    if (howl) {
-      howl.volume(newVolume);
-    }
+    howls.forEach((h) => h.volume(newVolume));
   };
 
   return (
@@ -94,7 +112,7 @@ export default function Home() {
               <div className="flex items-center gap-4">
                 <button
                   onClick={handlePlayPause}
-                  disabled={!howl}
+                  disabled={howls.length === 0}
                   className="px-3 py-1 bg-violet-500 text-white rounded disabled:bg-gray-300"
                 >
                   {isPlaying ? "Pause" : "Play"}
