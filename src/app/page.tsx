@@ -13,7 +13,7 @@ export default function AudioPlayer() {
 
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <header className="w-full max-w-4xl flex items-center justify-between relative">
+      <header className="w-full max-w-3xl flex items-center justify-between relative">
         <div className="flex items-center gap-2 w-40">
           <Music className="w-6 h-6 text-violet-500" />
         </div>
@@ -30,7 +30,7 @@ export default function AudioPlayer() {
           />
         </div>
       </header>
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start w-full max-w-4xl">
+      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start w-full max-w-3xl">
         <div className="flex flex-col gap-4 w-full">
           {tracks.length === 0 ? (
             <FileUpload handleFileUpload={handleFileUpload} />

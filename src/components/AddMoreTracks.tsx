@@ -8,7 +8,7 @@ interface Props {
 export const AddMoreTracks = ({ handleFileUpload }: Props) => (
   <label className="flex items-center justify-center gap-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors w-fit">
     <Plus className="w-4 h-4" />
-    <span>Add more tracks</span>
+    <span className="text-gray-500">Add more tracks</span>
     <input
       type="file"
       accept={Object.keys(SUPPORTED_AUDIO_FORMATS)

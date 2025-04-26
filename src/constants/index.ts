@@ -1,4 +1,4 @@
-import { MultitrackOptions, WaveformOptions } from '../types';
+import { MultitrackOptions, WaveformOptions } from '@/types';
 
 export const SUPPORTED_AUDIO_FORMATS: Record<string, string> = {
   'audio/mpeg': 'mp3',
@@ -19,9 +19,9 @@ export const MULTITRACK_OPTIONS: MultitrackOptions = {
   minPxPerSec: 5,
   cursorWidth: 2,
   cursorColor: '#D72F21',
-  trackBackground: 'white',
+  trackBackground: 'transparent',
   trackBorderColor: '#7C7C7C',
-  dragBounds: true,
+  dragBounds: false,
 };
 
 export const SKIP_TIME_SECONDS = 30;

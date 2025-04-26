@@ -1,4 +1,4 @@
-import { SUPPORTED_AUDIO_FORMATS } from '../constants';
+import { SUPPORTED_AUDIO_FORMATS } from '@/constants';
 
 interface Props {
   handleFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;

@@ -41,7 +41,7 @@ export const AudioControls = ({ multitrackRef, tracks, canPlay, setVolume, setZo
         <button
           onClick={handleSkipBackward}
           disabled={!canPlay}
-          className="p-2 rounded-lg hover:bg-violet-100 transition-colors"
+          className="p-2 rounded-lg hover:scale-110 transition-colors hover:cursor-pointer"
           aria-label="Skip backward"
         >
           <SkipBack className="w-6 h-6" />
@@ -49,7 +49,7 @@ export const AudioControls = ({ multitrackRef, tracks, canPlay, setVolume, setZo
         <button
           onClick={handlePlayPause}
           disabled={!canPlay}
-          className="p-4 rounded-lg bg-violet-300 transition-colors hover:scale-110 hover:cursor-pointer"
+          className="p-4 rounded-lg bg-violet-400 transition-colors hover:scale-110 hover:cursor-pointer"
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
           {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
@@ -57,7 +57,7 @@ export const AudioControls = ({ multitrackRef, tracks, canPlay, setVolume, setZo
         <button
           onClick={handleSkipForward}
           disabled={!canPlay}
-          className="p-2 rounded-lg hover:bg-violet-100 transition-colors"
+          className="p-2 rounded-lg hover:scale-110 transition-colors hover:cursor-pointer"
           aria-label="Skip forward"
         >
           <SkipForward className="w-6 h-6" />
