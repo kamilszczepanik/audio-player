@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { Howl } from "howler";
 
 export default function Home() {
   const [audioFiles, setAudioFiles] = useState<File[]>([]);
+  const [howl, setHowl] = useState<Howl | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const howlRef = useRef<Howl | null>(null);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -12,6 +17,49 @@ export default function Home() {
         (file) => file.type === "audio/mpeg" || file.type === "audio/wav"
       );
       setAudioFiles((prev) => [...prev, ...newAudioFiles]);
+    }
+  };
+
+  useEffect(() => {
+    if (audioFiles.length === 0) return;
+    const file = audioFiles[0];
+    const url = URL.createObjectURL(file);
+    if (howlRef.current) {
+      howlRef.current.unload();
+    }
+    const sound = new Howl({
+      src: [url],
+      volume,
+      format: ["mp3", "wav"],
+      onend: function () {
+        setIsPlaying(false);
+      },
+    });
+    howlRef.current = sound;
+    setHowl(sound);
+    setIsPlaying(false);
+    return () => {
+      sound.unload();
+      URL.revokeObjectURL(url);
+    };
+  }, [audioFiles]);
+
+  const handlePlayPause = () => {
+    if (!howl) return;
+    if (isPlaying) {
+      howl.pause();
+      setIsPlaying(false);
+    } else {
+      howl.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    if (howl) {
+      howl.volume(newVolume);
     }
   };
 
@@ -33,7 +81,7 @@ export default function Home() {
               hover:file:bg-violet-100"
           />
           {audioFiles.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-4 flex flex-col gap-4">
               <h2 className="text-lg font-semibold mb-2">Uploaded Files:</h2>
               <ul className="space-y-2">
                 {audioFiles.map((file, index) => (
@@ -42,6 +90,27 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handlePlayPause}
+                  disabled={!howl}
+                  className="px-3 py-1 bg-violet-500 text-white rounded disabled:bg-gray-300"
+                >
+                  {isPlaying ? "Pause" : "Play"}
+                </button>
+                <label className="flex items-center gap-2">
+                  Volume
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={volume}
+                    onChange={handleVolumeChange}
+                    className="w-32"
+                  />
+                </label>
+              </div>
             </div>
           )}
         </div>
