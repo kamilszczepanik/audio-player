@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import WaveSurfer from 'wavesurfer.js';
-import { Trash2, Plus, Music, Play, Pause, Volume2, Search } from 'lucide-react';
+import Multitrack from 'wavesurfer-multitrack';
+import { Plus, Music, Play, Pause, Volume2, Search, SkipBack, SkipForward } from 'lucide-react';
 
 const AUDIO_FORMATS: Record<string, string> = {
   'audio/mpeg': 'mp3',
@@ -12,19 +12,28 @@ const AUDIO_FORMATS: Record<string, string> = {
 type Track = {
   id: string;
   file: File;
-  wavesurfer: WaveSurfer | null;
-  container: HTMLDivElement | null;
+};
+
+type MultitrackInstance = {
+  play: () => void;
+  pause: () => void;
+  isPlaying: () => boolean;
+  setTime: (time: number) => void;
+  getCurrentTime: () => number;
+  zoom: (value: number) => void;
+  destroy: () => void;
+  on: (event: string, callback: (data: any) => void) => void;
+  once: (event: string, callback: () => void) => void;
 };
 
 export default function Home() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
-  const [zoom, setZoom] = useState(10);
-  const timelineRef = useRef<HTMLDivElement>(null);
-  const playheadRef = useRef<HTMLDivElement>(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [zoom, setZoom] = useState(5);
+  const [canPlay, setCanPlay] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const multitrackRef = useRef<MultitrackInstance | null>(null);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -34,8 +43,6 @@ export default function Home() {
         const track: Track = {
           id: Math.random().toString(36).substr(2, 9),
           file,
-          wavesurfer: null,
-          container: null,
         };
         setTracks((prev) => [...prev, track]);
       });
@@ -43,12 +50,15 @@ export default function Home() {
   };
 
   useEffect(() => {
-    tracks.forEach((track) => {
-      if (!track.wavesurfer) {
-        const container = document.getElementById(`waveform-${track.id}`);
-        if (container) {
-          const wavesurfer = WaveSurfer.create({
-            container: container,
+    if (containerRef.current && tracks.length > 0) {
+      const multitrack = Multitrack.create(
+        tracks.map((track, index) => ({
+          id: index,
+          draggable: true,
+          startPosition: 0,
+          url: URL.createObjectURL(track.file),
+          volume: volume,
+          options: {
             waveColor: '#4F46E5',
             progressColor: '#7C3AED',
             cursorColor: '#7C3AED',
@@ -56,91 +66,82 @@ export default function Home() {
             barRadius: 3,
             cursorWidth: 1,
             height: 100,
-          });
-
-          const url = URL.createObjectURL(track.file);
-          wavesurfer.load(url);
-
-          wavesurfer.on('ready', () => {
-            setDuration(Math.max(duration, wavesurfer.getDuration()));
-          });
-
-          wavesurfer.on('audioprocess', (time) => {
-            setCurrentTime(time);
-          });
-
-          wavesurfer.on('interaction', () => {
-            const currentTime = wavesurfer.getCurrentTime();
-            tracks.forEach((otherTrack) => {
-              if (otherTrack.id !== track.id && otherTrack.wavesurfer) {
-                otherTrack.wavesurfer.seekTo(currentTime / otherTrack.wavesurfer.getDuration());
-              }
-            });
-          });
-
-          track.wavesurfer = wavesurfer;
+          },
+        })),
+        {
+          container: containerRef.current,
+          minPxPerSec: zoom,
+          cursorWidth: 2,
+          cursorColor: '#D72F21',
+          trackBackground: '#2D2D2D',
+          trackBorderColor: '#7C7C7C',
+          dragBounds: true,
         }
-      }
-    });
+      );
 
-    return () => {
-      tracks.forEach((track) => {
-        if (track.wavesurfer) {
-          track.wavesurfer.destroy();
-        }
+      multitrack.once('canplay', () => {
+        setCanPlay(true);
       });
-    };
+
+      multitrack.on('start-position-change', ({ id, startPosition }) => {
+        console.log(`Track ${id} start position updated to ${startPosition}`);
+      });
+
+      multitrack.on('volume-change', ({ id, volume }) => {
+        console.log(`Track ${id} volume updated to ${volume}`);
+      });
+
+      multitrackRef.current = multitrack as unknown as MultitrackInstance;
+
+      return () => {
+        multitrack.destroy();
+      };
+    }
   }, [tracks]);
 
   const handlePlayPause = () => {
-    if (tracks.length === 0) return;
-
-    if (isPlaying) {
-      tracks.forEach((track) => track.wavesurfer?.pause());
-      setIsPlaying(false);
-    } else {
-      tracks.forEach((track) => track.wavesurfer?.play());
-      setIsPlaying(true);
+    if (multitrackRef.current) {
+      if (isPlaying) {
+        multitrackRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        multitrackRef.current.play();
+        setIsPlaying(true);
+      }
     }
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
-    tracks.forEach((track) => track.wavesurfer?.setVolume(newVolume));
-  };
-
-  const handleDeleteTrack = (trackId: string) => {
-    setTracks((prev) => {
-      const track = prev.find((t) => t.id === trackId);
-      if (track) {
-        if (track.wavesurfer) {
-          track.wavesurfer.destroy();
-        }
-        if (track.container) {
-          track.container.remove();
-        }
-      }
-      return prev.filter((t) => t.id !== trackId);
-    });
+    if (multitrackRef.current) {
+      // Update volume for all tracks
+      tracks.forEach((_, index) => {
+        // @ts-expect-error - The API has this method but TypeScript doesn't know about it
+        multitrackRef.current?.setTrackVolume(index, newVolume);
+      });
+    }
   };
 
   const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newZoom = parseInt(e.target.value);
     setZoom(newZoom);
-    tracks.forEach((track) => {
-      if (track.wavesurfer) {
-        track.wavesurfer.zoom(newZoom);
-      }
-    });
+    if (multitrackRef.current) {
+      multitrackRef.current.zoom(newZoom);
+    }
   };
 
-  useEffect(() => {
-    if (playheadRef.current) {
-      const percentage = (currentTime / duration) * 100;
-      playheadRef.current.style.left = `${percentage}%`;
+  const handleSkipForward = () => {
+    if (multitrackRef.current) {
+      multitrackRef.current.setTime(multitrackRef.current.getCurrentTime() + 30);
     }
-  }, [currentTime, duration]);
+  };
+
+  const handleSkipBackward = () => {
+    if (multitrackRef.current) {
+      multitrackRef.current.setTime(multitrackRef.current.getCurrentTime() - 30);
+    }
+  };
 
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
@@ -170,14 +171,32 @@ export default function Home() {
               <input type="range" min="10" max="100" value={zoom} onChange={handleZoomChange} className="w-24" />
             </div>
           </div>
-          <button
-            onClick={handlePlayPause}
-            disabled={tracks.length === 0}
-            className="p-4 rounded-lg bg-violet-300 transition-colors hover:scale-110 hover:cursor-pointer"
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleSkipBackward}
+              disabled={!canPlay}
+              className="p-2 rounded-lg hover:bg-violet-100 transition-colors"
+              aria-label="Skip backward"
+            >
+              <SkipBack className="w-6 h-6" />
+            </button>
+            <button
+              onClick={handlePlayPause}
+              disabled={!canPlay}
+              className="p-4 rounded-lg bg-violet-300 transition-colors hover:scale-110 hover:cursor-pointer"
+              aria-label={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+            </button>
+            <button
+              onClick={handleSkipForward}
+              disabled={!canPlay}
+              className="p-2 rounded-lg hover:bg-violet-100 transition-colors"
+              aria-label="Skip forward"
+            >
+              <SkipForward className="w-6 h-6" />
+            </button>
+          </div>
         </div>
       </header>
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start w-full max-w-4xl">
@@ -202,30 +221,7 @@ export default function Home() {
             </label>
           ) : (
             <>
-              <div className="relative w-full" ref={timelineRef}>
-                <div
-                  ref={playheadRef}
-                  className="absolute top-0 bottom-0 w-0.5 bg-violet-500 z-10"
-                  style={{ left: '0%' }}
-                />
-                {tracks.map((track) => (
-                  <div key={track.id} className="relative mb-4">
-                    <div className="flex justify-end mb-2">
-                      <button
-                        onClick={() => handleDeleteTrack(track.id)}
-                        className="p-1 hover:bg-red-100 rounded-full transition-colors"
-                        aria-label="Delete track"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
-                    </div>
-                    <div className="flex flex-col">
-                      <div id={`waveform-${track.id}`} />
-                      <span className="text-sm text-gray-600 mt-2">{track.file.name}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <div ref={containerRef} className="w-full" />
               <label className="flex items-center justify-center gap-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors w-fit">
                 <Plus className="w-4 h-4" />
                 <span>Add more tracks</span>
