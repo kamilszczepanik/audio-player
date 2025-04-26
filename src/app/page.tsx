@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Multitrack from 'wavesurfer-multitrack';
 import { Plus, Music, Play, Pause, Volume2, Search, SkipBack, SkipForward } from 'lucide-react';
+import type { default as MultitrackInstance } from 'wavesurfer-multitrack';
 
 const AUDIO_FORMATS: Record<string, string> = {
   'audio/mpeg': 'mp3',
@@ -14,18 +15,6 @@ type Track = {
   file: File;
 };
 
-type MultitrackInstance = {
-  play: () => void;
-  pause: () => void;
-  isPlaying: () => boolean;
-  setTime: (time: number) => void;
-  getCurrentTime: () => number;
-  zoom: (value: number) => void;
-  destroy: () => void;
-  on: (event: string, callback: (data: any) => void) => void;
-  once: (event: string, callback: () => void) => void;
-};
-
 export default function Home() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -35,13 +24,35 @@ export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
   const multitrackRef = useRef<MultitrackInstance | null>(null);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!canPlay) return;
+
+      switch (e.key) {
+        case ' ':
+          e.preventDefault(); // Prevent page scroll on space
+          handlePlayPause();
+          break;
+        case 'ArrowLeft':
+          handleSkipBackward();
+          break;
+        case 'ArrowRight':
+          handleSkipForward();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canPlay, isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
       const newAudioFiles = Array.from(files).filter((file) => AUDIO_FORMATS[file.type]);
       newAudioFiles.forEach((file) => {
         const track: Track = {
-          id: Math.random().toString(36).substr(2, 9),
+          id: Math.random().toString(36),
           file,
         };
         setTracks((prev) => [...prev, track]);
@@ -73,7 +84,7 @@ export default function Home() {
           minPxPerSec: zoom,
           cursorWidth: 2,
           cursorColor: '#D72F21',
-          trackBackground: '#2D2D2D',
+          trackBackground: 'white',
           trackBorderColor: '#7C7C7C',
           dragBounds: true,
         }
@@ -83,21 +94,13 @@ export default function Home() {
         setCanPlay(true);
       });
 
-      multitrack.on('start-position-change', ({ id, startPosition }) => {
-        console.log(`Track ${id} start position updated to ${startPosition}`);
-      });
-
-      multitrack.on('volume-change', ({ id, volume }) => {
-        console.log(`Track ${id} volume updated to ${volume}`);
-      });
-
-      multitrackRef.current = multitrack as unknown as MultitrackInstance;
+      multitrackRef.current = multitrack;
 
       return () => {
         multitrack.destroy();
       };
     }
-  }, [tracks]);
+  }, [tracks]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePlayPause = () => {
     if (multitrackRef.current) {
@@ -115,9 +118,7 @@ export default function Home() {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
     if (multitrackRef.current) {
-      // Update volume for all tracks
       tracks.forEach((_, index) => {
-        // @ts-expect-error - The API has this method but TypeScript doesn't know about it
         multitrackRef.current?.setTrackVolume(index, newVolume);
       });
     }
@@ -145,11 +146,11 @@ export default function Home() {
 
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <header className="w-full max-w-4xl flex items-center justify-between">
+      <header className="w-full max-w-4xl flex items-center justify-between relative">
         <div className="flex items-center gap-2 w-40">
           <Music className="w-6 h-6 text-violet-500" />
         </div>
-        <h1 className="text-2xl font-bold text-center">iAudio</h1>
+        <h1 className="text-2xl font-bold absolute left-1/2 transform -translate-x-1/2">iAudio</h1>
         <div
           className={`flex items-center gap-6 transition-opacity duration-300 ${tracks.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         >
