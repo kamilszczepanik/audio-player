@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Howl } from 'howler';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Plus, Music, Play, Pause, Volume2 } from 'lucide-react';
 
 const AUDIO_FORMATS: Record<string, string> = {
   'audio/mpeg': 'mp3',
@@ -82,7 +82,6 @@ export default function Home() {
   };
 
   const handleDeleteTrack = (index: number) => {
-    // Clean up the howl and blob URL for the deleted track
     if (howls[index]) {
       howls[index].unload();
     }
@@ -90,7 +89,6 @@ export default function Home() {
       URL.revokeObjectURL(blobUrls[index]);
     }
 
-    // Remove the track from all state arrays
     setAudioFiles((prev) => prev.filter((_, i) => i !== index));
     setHowls((prev) => prev.filter((_, i) => i !== index));
     setBlobUrls((prev) => prev.filter((_, i) => i !== index));
@@ -98,26 +96,58 @@ export default function Home() {
 
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <h1 className="text-2xl font-bold">Audio Pill Player</h1>
-        <div className="flex flex-col gap-4">
-          <input
-            type="file"
-            accept={Object.keys(AUDIO_FORMATS)
-              .map((type) => `.${AUDIO_FORMATS[type]}`)
-              .join(',')}
-            multiple
-            onChange={handleFileUpload}
-            className="block w-full text-sm text-gray-500
-              file:mr-4 file:py-2 file:px-4
-              file:rounded-full file:border-0
-              file:text-sm file:font-semibold
-              file:bg-violet-50 file:text-violet-700
-              hover:file:bg-violet-100"
-          />
-          {audioFiles.length > 0 && (
-            <div className="mt-4 flex flex-col gap-4">
-              <h2 className="text-lg font-semibold mb-2">Uploaded Files:</h2>
+      <header className="w-full max-w-2xl flex items-center justify-between">
+        <div className="flex items-center gap-2 w-40">
+          <Music className="w-6 h-6 text-violet-500" />
+        </div>
+        <h1 className="text-2xl font-bold text-center">iAudio</h1>
+        <div
+          className={`flex items-center gap-4 transition-opacity duration-300 ${audioFiles.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        >
+          <button
+            onClick={handlePlayPause}
+            disabled={howls.length === 0}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+          </button>
+          <div className="flex items-center gap-2">
+            <Volume2 className="w-5 h-5 text-gray-600" />
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={volume}
+              onChange={handleVolumeChange}
+              className="w-24"
+            />
+          </div>
+        </div>
+      </header>
+      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start w-full max-w-2xl">
+        <div className="flex flex-col gap-4 w-full">
+          {audioFiles.length === 0 ? (
+            <label className="relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 rounded-3xl cursor-pointer hover:border-gray-400 transition-colors">
+              <div className="flex flex-col items-center justify-center text-center p-6">
+                <p className="text-2xl font-medium text-gray-400 animate-pulse">Drop your audio files</p>
+                <p className="text-lg text-gray-400 animate-pulse">or</p>
+                <p className="text-2xl font-medium text-gray-400 animate-pulse">Click here to upload audio</p>
+                <p className="mt-4 text-sm text-gray-400 ">Supported formats: mp3, wav, ogg, flac</p>
+              </div>
+              <input
+                type="file"
+                accept={Object.keys(AUDIO_FORMATS)
+                  .map((type) => `.${AUDIO_FORMATS[type]}`)
+                  .join(',')}
+                multiple
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </label>
+          ) : (
+            <>
               <ul className="space-y-2">
                 {audioFiles.map((file, index) => (
                   <li key={index} className="text-sm text-gray-600 flex items-center justify-between">
@@ -132,32 +162,23 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handlePlayPause}
-                  disabled={howls.length === 0}
-                  className="px-3 py-1 bg-violet-500 text-white rounded disabled:bg-gray-300"
-                >
-                  {isPlaying ? 'Pause' : 'Play'}
-                </button>
-                <label className="flex items-center gap-2">
-                  Volume
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={volume}
-                    onChange={handleVolumeChange}
-                    className="w-32"
-                  />
-                </label>
-              </div>
-            </div>
+              <label className="flex items-center justify-center gap-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors w-fit">
+                <Plus className="w-4 h-4" />
+                <span>Add more tracks</span>
+                <input
+                  type="file"
+                  accept={Object.keys(AUDIO_FORMATS)
+                    .map((type) => `.${AUDIO_FORMATS[type]}`)
+                    .join(',')}
+                  multiple
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </>
           )}
         </div>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">footer</footer>
     </div>
   );
 }
